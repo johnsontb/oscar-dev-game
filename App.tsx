@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
-import { Rocket, Play, Star, Lock, RefreshCw, CheckCircle, ArrowRight, Map, BookOpen, Lightbulb } from 'lucide-react';
+import { Rocket, Play, Star, Lock, RefreshCw, CheckCircle, ArrowRight, Map, BookOpen, Lightbulb, Volume2, VolumeX } from 'lucide-react';
 import { LEVELS } from './constants';
 import { Level, GameState, UserState } from './types';
 import { validateCode, getHint } from './services/geminiService';
+import { soundService } from './services/soundService';
 import { CodeEditor } from './components/CodeEditor';
 import { PreviewWindow } from './components/PreviewWindow';
 import { Mascot } from './components/Mascot';
@@ -19,6 +21,7 @@ const App: React.FC = () => {
   const [validationMessage, setValidationMessage] = useState("Hi Oscar! I'm Bit. Let's code!");
   const [isValidating, setIsValidating] = useState(false);
   const [mascotEmotion, setMascotEmotion] = useState<'happy' | 'thinking' | 'waiting'>('happy');
+  const [isMuted, setIsMuted] = useState(false);
 
   const currentLevel = LEVELS.find(l => l.id === userState.currentLevelId) || LEVELS[0];
 
@@ -29,16 +32,41 @@ const App: React.FC = () => {
     }
   }, [gameState]);
 
+  // Initialize audio context on first interaction
+  const handleInteraction = () => {
+    soundService.init();
+    soundService.startMusic();
+    soundService.playClick();
+  };
+  
+  const toggleMute = () => {
+      const newMuteState = !isMuted;
+      setIsMuted(newMuteState);
+      soundService.setMute(newMuteState);
+  }
+
   const handleLevelSelect = (levelId: number) => {
+    handleInteraction();
     if (userState.unlockedLevels.includes(levelId)) {
+      soundService.playWarp();
       setUserState(prev => ({ ...prev, currentLevelId: levelId }));
+      
       const level = LEVELS.find(l => l.id === levelId);
       setCode(level?.initialCode || "");
       setGameState(GameState.STORY);
+      
+      // Robot voice reads the story
+      if (level) {
+        setTimeout(() => soundService.speak(level.story), 600);
+      }
     }
   };
 
   const handleCheckCode = async () => {
+    soundService.init(); // Ensure audio is ready
+    soundService.startMusic(); // Ensure music is running
+    soundService.playClick();
+    
     setIsValidating(true);
     setMascotEmotion('thinking');
     setValidationMessage("Checking your code...");
@@ -49,6 +77,9 @@ const App: React.FC = () => {
     setValidationMessage(result.feedback);
     
     if (result.success) {
+      soundService.playSuccess();
+      soundService.speak("Awesome! " + result.feedback);
+      
       setMascotEmotion('happy');
       setGameState(GameState.SUCCESS);
       if (!userState.completedLevels.includes(currentLevel.id)) {
@@ -64,38 +95,68 @@ const App: React.FC = () => {
         }));
       }
     } else {
+      soundService.playFailure();
+      soundService.speak(result.feedback);
       setMascotEmotion('waiting');
     }
   };
 
   const handleGetHint = async () => {
+      soundService.init();
+      soundService.startMusic();
+      soundService.playClick();
       setMascotEmotion('thinking');
       setValidationMessage("Thinking...");
       const hint = await getHint(currentLevel, code);
       setValidationMessage(hint);
+      soundService.speak(hint);
       setMascotEmotion('happy');
   };
 
   const handleNextLevel = () => {
+    soundService.init();
+    soundService.playWarp();
     const nextId = currentLevel.id + 1;
     if (nextId <= LEVELS.length) {
       setUserState(prev => ({ ...prev, currentLevelId: nextId }));
-      setCode(LEVELS.find(l => l.id === nextId)?.initialCode || "");
+      
+      const nextLevel = LEVELS.find(l => l.id === nextId);
+      setCode(nextLevel?.initialCode || "");
       setGameState(GameState.STORY);
+      
+      if (nextLevel) {
+          setTimeout(() => soundService.speak(nextLevel.story), 600);
+      }
     } else {
       setGameState(GameState.MENU); // Finished all levels
     }
   };
 
   const insertCode = (snippet: string) => {
+    soundService.init();
+    soundService.startMusic();
+    soundService.playSnap();
     setCode(prev => prev + snippet);
   };
+
+  const handleNavClick = (targetState: GameState) => {
+      handleInteraction();
+      setGameState(targetState);
+  }
 
   // --- RENDERERS ---
 
   if (gameState === GameState.MENU) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 relative">
+        {/* Mute Button Absolute in Menu */}
+        <button 
+            onClick={toggleMute}
+            className="absolute top-6 right-6 p-3 bg-slate-800/50 hover:bg-slate-700 text-white rounded-full transition-colors"
+        >
+            {isMuted ? <VolumeX size={24}/> : <Volume2 size={24}/>}
+        </button>
+
         <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-yellow-300 mb-12 drop-shadow-lg text-center">
           OSCAR'S GALAXY
         </h1>
@@ -146,13 +207,24 @@ const App: React.FC = () => {
         <div className="bg-white text-slate-900 max-w-2xl w-full rounded-3xl p-8 border-8 border-orange-400 shadow-2xl animate-fade-in-up">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-4xl font-black text-indigo-600">Mission {currentLevel.id}</h2>
+            <button onClick={toggleMute} className="text-slate-400 hover:text-slate-800">
+                {isMuted ? <VolumeX size={24}/> : <Volume2 size={24}/>}
+            </button>
           </div>
           <p className="text-3xl font-medium leading-relaxed mb-8 text-slate-800">
             {currentLevel.story}
           </p>
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <button 
+                onClick={() => soundService.speak(currentLevel.story)}
+                className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold text-lg transition-colors"
+            >
+                <Volume2 size={24} />
+                Read to me
+            </button>
+
             <button
-              onClick={() => setGameState(GameState.PLAYING)}
+              onClick={() => handleNavClick(GameState.PLAYING)}
               className="bg-green-500 hover:bg-green-400 text-white text-3xl font-bold px-10 py-6 rounded-2xl border-b-8 border-green-700 transition-transform active:scale-95 flex items-center gap-3"
             >
               Let's Code! <ArrowRight size={40} />
@@ -174,7 +246,7 @@ const App: React.FC = () => {
           <p className="text-2xl text-slate-700 mb-8">{validationMessage}</p>
           <div className="flex gap-4 w-full">
              <button
-              onClick={() => setGameState(GameState.PLAYING)}
+              onClick={() => handleNavClick(GameState.PLAYING)}
               className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xl font-bold px-6 py-4 rounded-2xl border-b-4 border-slate-400"
             >
               Wait
@@ -196,14 +268,19 @@ const App: React.FC = () => {
       {/* Header */}
       <div className="h-16 bg-slate-800 border-b border-slate-700 flex items-center justify-between px-6 z-20 shrink-0">
         <div className="flex items-center gap-4">
-          <button onClick={() => setGameState(GameState.MENU)} className="text-slate-400 hover:text-white transition-colors">
+          <button onClick={() => handleNavClick(GameState.MENU)} className="text-slate-400 hover:text-white transition-colors">
             <Map size={24} />
           </button>
           <h2 className="text-2xl font-bold text-white tracking-wide">Level {currentLevel.id}: <span className="text-indigo-400">{currentLevel.title}</span></h2>
         </div>
-        <button onClick={() => setGameState(GameState.STORY)} className="flex items-center gap-2 text-indigo-300 font-bold bg-indigo-900/50 px-3 py-1 rounded-lg hover:bg-indigo-900 transition-colors">
-             <BookOpen size={18} /> Mission
-        </button>
+        <div className="flex items-center gap-4">
+             <button onClick={toggleMute} className="text-slate-400 hover:text-white transition-colors">
+                {isMuted ? <VolumeX size={20}/> : <Volume2 size={20}/>}
+            </button>
+            <button onClick={() => handleNavClick(GameState.STORY)} className="flex items-center gap-2 text-indigo-300 font-bold bg-indigo-900/50 px-3 py-1 rounded-lg hover:bg-indigo-900 transition-colors">
+                 <BookOpen size={18} /> Mission
+            </button>
+        </div>
       </div>
 
       {/* Main Workspace */}
