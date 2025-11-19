@@ -13,6 +13,7 @@ export interface Level {
   concept: string;
   initialCode: string;
   solutionPattern: string; // A regex or simple check backup
+  guideSnippet?: string; // Exact code to display for the child to copy
   previewBaseStyles?: string; // CSS to make the preview look okay before user edits
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Rocket, Play, Star, Lock, RefreshCw, CheckCircle, ArrowRight, Map } from 'lucide-react';
+import { Rocket, Play, Star, Lock, RefreshCw, CheckCircle, ArrowRight, Map, BookOpen, Lightbulb } from 'lucide-react';
 import { LEVELS } from './constants';
 import { Level, GameState, UserState } from './types';
 import { validateCode, getHint } from './services/geminiService';
@@ -24,18 +24,16 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (gameState === GameState.PLAYING) {
-      // Keep existing code if re-entering, or reset to initial if new
-      if (code === "" || code === LEVELS.find(l => l.id === userState.currentLevelId - 1)?.initialCode) {
-           setCode(currentLevel.initialCode);
-      }
-      setValidationMessage("Ready for instructions, Captain!");
+      // When entering playing state, ensure we have a fresh prompt.
+      setValidationMessage("Look at the blue box. Type that code!");
     }
-  }, [gameState, userState.currentLevelId, currentLevel, code]);
+  }, [gameState]);
 
   const handleLevelSelect = (levelId: number) => {
     if (userState.unlockedLevels.includes(levelId)) {
       setUserState(prev => ({ ...prev, currentLevelId: levelId }));
-      setCode(LEVELS.find(l => l.id === levelId)?.initialCode || "");
+      const level = LEVELS.find(l => l.id === levelId);
+      setCode(level?.initialCode || "");
       setGameState(GameState.STORY);
     }
   };
@@ -43,7 +41,7 @@ const App: React.FC = () => {
   const handleCheckCode = async () => {
     setIsValidating(true);
     setMascotEmotion('thinking');
-    setValidationMessage("Scanning your code...");
+    setValidationMessage("Checking your code...");
     
     const result = await validateCode(currentLevel, code);
     
@@ -72,7 +70,7 @@ const App: React.FC = () => {
 
   const handleGetHint = async () => {
       setMascotEmotion('thinking');
-      setValidationMessage("Computing hint...");
+      setValidationMessage("Thinking...");
       const hint = await getHint(currentLevel, code);
       setValidationMessage(hint);
       setMascotEmotion('happy');
@@ -99,7 +97,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 relative">
         <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-yellow-300 mb-12 drop-shadow-lg text-center">
-          OSCAR'S CODE GALAXY
+          OSCAR'S GALAXY
         </h1>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 max-w-4xl w-full">
@@ -130,14 +128,14 @@ const App: React.FC = () => {
                   ) : (
                     <Lock size={48} className="text-slate-400 mb-2" />
                   )}
-                  <span className="text-2xl font-bold">Level {level.id}</span>
-                  <span className="text-sm text-indigo-200 font-medium">{level.title}</span>
+                  <span className="text-3xl font-bold">Level {level.id}</span>
+                  <span className="text-lg text-indigo-200 font-medium">{level.title}</span>
                 </div>
               </button>
             );
           })}
         </div>
-        <Mascot message="Pick a mission, Oscar!" />
+        <Mascot message="Pick a mission, Captain Oscar!" />
       </div>
     );
   }
@@ -147,22 +145,17 @@ const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm z-50 fixed inset-0">
         <div className="bg-white text-slate-900 max-w-2xl w-full rounded-3xl p-8 border-8 border-orange-400 shadow-2xl animate-fade-in-up">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-4xl font-black text-indigo-600">Mission Briefing</h2>
-            <span className="bg-indigo-100 text-indigo-600 px-4 py-1 rounded-full font-bold">Level {currentLevel.id}</span>
+            <h2 className="text-4xl font-black text-indigo-600">Mission {currentLevel.id}</h2>
           </div>
-          <p className="text-2xl font-medium leading-relaxed mb-8 text-slate-700">
+          <p className="text-3xl font-medium leading-relaxed mb-8 text-slate-800">
             {currentLevel.story}
           </p>
-          <div className="bg-yellow-50 border-l-8 border-yellow-400 p-4 mb-8 rounded-r-lg">
-            <h3 className="text-xl font-bold text-yellow-700 mb-2">Your Goal:</h3>
-            <p className="text-lg">{currentLevel.mission}</p>
-          </div>
           <div className="flex justify-end">
             <button
               onClick={() => setGameState(GameState.PLAYING)}
-              className="bg-green-500 hover:bg-green-400 text-white text-2xl font-bold px-8 py-4 rounded-2xl border-b-8 border-green-700 transition-transform active:scale-95 flex items-center gap-3"
+              className="bg-green-500 hover:bg-green-400 text-white text-3xl font-bold px-10 py-6 rounded-2xl border-b-8 border-green-700 transition-transform active:scale-95 flex items-center gap-3"
             >
-              Start Building <ArrowRight size={32} />
+              Let's Code! <ArrowRight size={40} />
             </button>
           </div>
         </div>
@@ -177,20 +170,20 @@ const App: React.FC = () => {
           <div className="w-32 h-32 bg-green-100 rounded-full flex items-center justify-center mb-6">
              <CheckCircle size={64} className="text-green-500" />
           </div>
-          <h2 className="text-4xl font-black text-green-600 mb-4">Mission Accomplished!</h2>
-          <p className="text-xl text-slate-600 mb-8">{validationMessage}</p>
+          <h2 className="text-5xl font-black text-green-600 mb-4">YOU DID IT!</h2>
+          <p className="text-2xl text-slate-700 mb-8">{validationMessage}</p>
           <div className="flex gap-4 w-full">
              <button
               onClick={() => setGameState(GameState.PLAYING)}
               className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xl font-bold px-6 py-4 rounded-2xl border-b-4 border-slate-400"
             >
-              Stay Here
+              Wait
             </button>
             <button
               onClick={handleNextLevel}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xl font-bold px-6 py-4 rounded-2xl border-b-4 border-indigo-800 shadow-xl"
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-2xl font-bold px-6 py-4 rounded-2xl border-b-4 border-indigo-800 shadow-xl"
             >
-              Next Mission
+              Next!
             </button>
           </div>
         </div>
@@ -201,53 +194,68 @@ const App: React.FC = () => {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="h-16 bg-slate-800 border-b border-slate-700 flex items-center justify-between px-6 z-20">
+      <div className="h-16 bg-slate-800 border-b border-slate-700 flex items-center justify-between px-6 z-20 shrink-0">
         <div className="flex items-center gap-4">
-          <button onClick={() => setGameState(GameState.MENU)} className="text-slate-400 hover:text-white">
+          <button onClick={() => setGameState(GameState.MENU)} className="text-slate-400 hover:text-white transition-colors">
             <Map size={24} />
           </button>
-          <h2 className="text-xl font-bold text-white">Level {currentLevel.id}: <span className="text-orange-400">{currentLevel.title}</span></h2>
+          <h2 className="text-2xl font-bold text-white tracking-wide">Level {currentLevel.id}: <span className="text-indigo-400">{currentLevel.title}</span></h2>
         </div>
-        <div className="flex items-center gap-4">
-            <button onClick={() => setGameState(GameState.STORY)} className="text-sm font-bold text-indigo-300 hover:text-indigo-200 underline">
-                View Mission
-            </button>
-        </div>
+        <button onClick={() => setGameState(GameState.STORY)} className="flex items-center gap-2 text-indigo-300 font-bold bg-indigo-900/50 px-3 py-1 rounded-lg hover:bg-indigo-900 transition-colors">
+             <BookOpen size={18} /> Mission
+        </button>
       </div>
 
       {/* Main Workspace */}
-      <div className="flex-1 flex gap-4 p-4 h-[calc(100vh-4rem)]">
-        {/* Left: Editor */}
-        <div className="w-1/2 flex flex-col gap-4">
-          <div className="flex-1 relative">
+      <div className="flex-1 flex gap-4 p-4 h-full overflow-hidden">
+        {/* Left Column: Guide + Editor + Controls */}
+        <div className="w-1/2 flex flex-col gap-4 h-full">
+            {/* Persistent Mission Guide */}
+            <div className="bg-indigo-600 text-white p-4 rounded-xl shadow-lg border-b-4 border-indigo-800 shrink-0">
+                <h3 className="text-indigo-200 text-sm font-bold uppercase mb-1 flex items-center gap-2"><Lightbulb size={14}/> Type This:</h3>
+                {currentLevel.guideSnippet && (
+                    <div className="bg-black/30 p-3 rounded-lg font-mono text-2xl text-yellow-300 tracking-wide border border-indigo-400/30 break-all shadow-inner">
+                        {currentLevel.guideSnippet}
+                    </div>
+                )}
+            </div>
+
+          {/* Editor */}
+          <div className="flex-1 relative min-h-0">
              <CodeEditor code={code} onChange={setCode} />
           </div>
-          <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
+
+          {/* Control Panel */}
+          <div className="bg-slate-800 p-3 rounded-xl border-2 border-slate-700 flex flex-col gap-3 shrink-0 shadow-xl">
+            <div className="flex justify-between items-center">
+                <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Toolbox</span>
+            </div>
+            {/* Toolbox buttons row */}
             <Toolbox onInsert={insertCode} />
+            
+            {/* Action buttons row - Separate from Toolbox to prevent overlap */}
+            <div className="flex gap-3 pt-3 border-t border-slate-700 mt-1">
+                 <button
+                  onClick={handleGetHint}
+                  className="bg-yellow-500 hover:bg-yellow-400 text-yellow-900 font-bold px-5 py-3 rounded-xl shadow-lg border-b-4 border-yellow-700 flex items-center gap-2 active:mt-1 active:border-b-0 active:translate-y-1 transition-all"
+                >
+                  <RefreshCw size={20} /> Hint
+                </button>
+                <button
+                  onClick={handleCheckCode}
+                  disabled={isValidating}
+                  className="flex-1 bg-green-500 hover:bg-green-400 text-white text-2xl font-bold px-6 py-3 rounded-xl shadow-lg border-b-4 border-green-700 flex items-center justify-center gap-3 active:mt-1 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-70 disabled:transform-none"
+                >
+                  {isValidating ? 'Checking...' : <>GO! <Play fill="currentColor" /></>}
+                </button>
+            </div>
           </div>
         </div>
 
-        {/* Right: Preview */}
-        <div className="w-1/2 relative">
+        {/* Right Column: Preview */}
+        <div className="w-1/2 h-full">
           <PreviewWindow code={code} baseStyles={currentLevel.previewBaseStyles} />
         </div>
-      </div>
-
-      {/* Footer Controls */}
-      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex gap-4 z-40">
-         <button
-          onClick={handleGetHint}
-          className="bg-yellow-400 hover:bg-yellow-300 text-yellow-900 font-bold px-6 py-3 rounded-full shadow-lg border-b-4 border-yellow-600 flex items-center gap-2 transition-transform active:scale-95"
-        >
-          <RefreshCw size={20} /> Need a Hint?
-        </button>
-        <button
-          onClick={handleCheckCode}
-          disabled={isValidating}
-          className="bg-green-500 hover:bg-green-400 text-white text-xl font-bold px-10 py-3 rounded-full shadow-lg border-b-4 border-green-700 flex items-center gap-3 transition-transform active:scale-95 disabled:opacity-70 disabled:cursor-wait"
-        >
-          {isValidating ? 'Checking...' : <>Launch Code <Play fill="currentColor" /></>}
-        </button>
       </div>
       
       <Mascot message={validationMessage} emotion={mascotEmotion} />

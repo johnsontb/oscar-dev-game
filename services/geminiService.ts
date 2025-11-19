@@ -6,16 +6,16 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const validateCode = async (level: Level, userCode: string): Promise<CodeValidationResult> => {
   const prompt = `
-    Level Title: ${level.title}
-    Mission: ${level.mission}
-    Concept to learn: ${level.concept}
+    Task: Check code for a 7-year-old boy named Oscar.
+    Level: ${level.title}
+    Goal Code (or similar): ${level.guideSnippet || "HTML structure matching the mission"}
     
     Oscar's Code:
     ${userCode}
     
-    Did Oscar complete the mission? 
-    Check if the code is valid HTML/CSS and fulfills the visual goal described in the mission.
-    Ignore minor syntax errors if the browser would likely still render it, but point them out gently if they break the view.
+    Did he strictly or loosely match the goal?
+    If he is close but missing a bracket or quote, be gentle.
+    Respond in JSON with 'success' (boolean) and 'feedback' (string, max 10 words).
   `;
 
   try {
@@ -39,7 +39,7 @@ export const validateCode = async (level: Level, userCode: string): Promise<Code
     const result = JSON.parse(response.text || "{}");
     return {
       success: result.success ?? false,
-      feedback: result.feedback ?? "I couldn't quite read that, Captain Oscar. Try again!"
+      feedback: result.feedback ?? "I couldn't read that. Try again!"
     };
   } catch (error) {
     console.error("Gemini validation failed:", error);
@@ -48,8 +48,8 @@ export const validateCode = async (level: Level, userCode: string): Promise<Code
     return {
       success: basicCheck,
       feedback: basicCheck 
-        ? "Awesome work, Oscar! (Offline Mode)" 
-        : "Hmm, something looks missing. Check your spelling! (Offline Mode)"
+        ? "Good job, Oscar!" 
+        : "Check your spelling!"
     };
   }
 };
@@ -57,11 +57,11 @@ export const validateCode = async (level: Level, userCode: string): Promise<Code
 export const getHint = async (level: Level, userCode: string): Promise<string> => {
     try {
         const prompt = `
-            Oscar is stuck on Level: ${level.title}.
-            Mission: ${level.mission}
-            His current code: ${userCode}
+            Oscar (age 7) is stuck on Level: ${level.title}.
+            The answer is: ${level.guideSnippet}
+            His code: ${userCode}
             
-            Give him a tiny, easy hint. Use space metaphors.
+            Give a 5-word hint.
         `;
         
         const response = await ai.models.generateContent({
@@ -71,8 +71,8 @@ export const getHint = async (level: Level, userCode: string): Promise<string> =
                 systemInstruction: GEMINI_SYSTEM_INSTRUCTION
             }
         });
-        return response.text || "Try looking at the examples again!";
+        return response.text || "Look at the blue box above!";
     } catch (e) {
-        return "Check your spelling carefully!";
+        return "Look at the example code!";
     }
 }
